@@ -5,7 +5,7 @@
   "description": "Gantt View for Project-List",
   "content_scripts": [
     {
-      "matches": ["https://redmine.yoc.com/projects/*/issues*"],
+      "matches": ["https://*/projects/*/issues*"],
       "css": ["style.css"],
       "js": ["jquery.js", "go.js"]
     }
