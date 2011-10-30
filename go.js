@@ -104,7 +104,9 @@ Gantt = {
   showTask : function(_gindex,_tindex) {
     var g = this.groups[_gindex].tasks[_tindex];
     var diff = getTimeDiff(Gantt.time,g.start);
+    var diff2 = getTimeDiff(Gantt.time,g.end);
     $('#gs'+_gindex).append('<div class="ganttTask" title="'+g.id+'" style="margin-left: '+(Gantt.view.day.width*diff)+'px; width: '+(Gantt.view.day.width*g.day.length)+'px">'+g.subject+'</div>'); 
+    $('#gs'+_gindex).append('<div class="ganttPoint" title="'+g.id+'" style="margin-left: '+(Gantt.view.day.width*diff2)+'px;">×</div>'); 
   },
   buildWorkload : function(_gindex) {
     var g = this.groups[_gindex];

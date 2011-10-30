@@ -21,6 +21,14 @@
   padding-bottom: 3px;
 }
 
+.ganttPoint {
+  margin-top: -18px;
+  color: #f00;
+  text-align: center;
+  width: 40px; 
+  height: 16px;
+}
+
 .ganttDate{
   background-color: #ccc;
   opacity: 0.9;
