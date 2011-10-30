@@ -6,6 +6,9 @@
   margin: 0;
   padding: 0;
 }
+.red {
+  background-color: #f00;
+}
 .ganttTask {
   height: 12px;
   background-color: #ddd;
@@ -22,10 +25,13 @@
 }
 
 .ganttPoint {
-  margin-top: -18px;
+  margin-top: -21px;
+  maring-bottom: 6px;
   color: #f00;
   text-align: center;
-  width: 40px; 
+  width: 35px; 
+  border-radius: 6px;
+  border: 2px solid #f00;
   height: 16px;
 }
 

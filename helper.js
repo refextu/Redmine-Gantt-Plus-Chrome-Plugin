@@ -1,6 +1,9 @@
 
 function testDay(_d) {
   var d = new Date(_d).getDay();
+  if(Gantt.holiday[_d]) {
+    return false;
+  }
   switch(d) {
     case 0 : 
       return false;

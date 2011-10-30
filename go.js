@@ -1,7 +1,7 @@
 
 
 
-/* Darstellungsvariablen */
+/* Darstellungsvariablen
 var dayWidth = 40;
 var effortADay = 8;
 var aDay = 86400000;
@@ -12,13 +12,42 @@ var startX = 0;
 var currentX = 0;
 var currentW = 0;
 var slide = true;
+ */
+
+
+
+
+function item(_this,_evt) {
+  this.current = $(_this);
+  this.margin = parseInt(this.current.css('margin-left'));
+  this.width = parseInt(this.current.css('width'));
+  this.type =  null,
+  this.mouse = {
+    start : _evt.clientX,
+    current : _evt.clientX
+  };
+  this.updateMargin = function(_evt) {
+    this.margin = (this.margin + _evt.clientX - this.mouse.current );
+    this.mouse.current = _evt.clientX;
+    return this.margin;
+  };
+  this.updateWidth = function(_evt) {
+    this.width = (this.width + _evt.clientX - this.mouse.current );
+    this.mouse.current = _evt.clientX;
+    return this.width;
+  }
+}
 
 
 Gantt = {
+
   date : null,
   time : null,
   day : null,
+  item : null,
   groups : [],
+  tasks : [],
+  holiday : ['2011-11-01'],
   view : {
     day : {
       width : 40,
@@ -71,8 +100,17 @@ Gantt = {
     }
 
     var marginleft = -1 * (this.day) * this.view.day.width;
-    $('#gs'+_index).css('background-position',marginleft+'px 0');
+
     $('#gs'+_index+' .ganttDate').find('.gdi0').css('margin-left',marginleft+'px');
+    var bg = 'url('+chrome.extension.getURL("bg2.gif")+') '+marginleft+'px 0 repeat';
+    for(var i = 0; i< 30; i++) {
+      var t = this.time + (i*this.view.day.ms);
+      if(this.holiday[t]) {
+        var marginleft = i * this.view.day.width;
+        bg += ', url('+chrome.extension.getURL("bg3.gif")+') '+marginleft+'px 0 repeat-y';
+      }
+    }
+    $('#gs'+_index).css('background',bg);
   },
   buildTask : function(_node,_gindex) {
     var g = {
@@ -85,31 +123,40 @@ Gantt = {
       days : function() { return Math.ceil(this.effort / Gantt.view.day.effort ); },
       startday : function() { return new Date(this.start).getDay();}
     };
-    var j = 0;
-    var d = 0;
-    while(d<g.days()) {
-      var now = (g.start + (j * Gantt.view.day.ms));
-      if(testDay(now)){
-        g.day[now] = 1;
-        d++;
-      } else {
-        g.day[now] = 0;
-      }
-      g.day.length++;
-      j++;
-    }
-    this.groups[_gindex].tasks.push(g);
+    this.tasks[g.id] = g;
+    this.groups[_gindex].tasks.push(this.tasks[g.id]);
     this.showTask(_gindex,this.groups[_gindex].tasks.length-1);
   },
   showTask : function(_gindex,_tindex) {
-    var g = this.groups[_gindex].tasks[_tindex];
-    var diff = getTimeDiff(Gantt.time,g.start);
-    var diff2 = getTimeDiff(Gantt.time,g.end);
-    $('#gs'+_gindex).append('<div class="ganttTask" title="'+g.id+'" style="margin-left: '+(Gantt.view.day.width*diff)+'px; width: '+(Gantt.view.day.width*g.day.length)+'px">'+g.subject+'</div>'); 
-    $('#gs'+_gindex).append('<div class="ganttPoint" title="'+g.id+'" style="margin-left: '+(Gantt.view.day.width*diff2)+'px;">×</div>'); 
+    var t = this.groups[_gindex].tasks[_tindex];
+    $('#gs'+_gindex).append(this.htmlTask(t));
+  },
+  htmlTask : function(_t) {
+
+    _t.day = [];
+    var j = 0;
+    var d = 0;
+    while(d<_t.days()) {
+      var now = (_t.start + (j * Gantt.view.day.ms));
+      if(testDay(now)){
+        _t.day[now] = 1;
+        d++;
+      } else {
+        _t.day[now] = 0;
+      }
+      _t.day.length++;
+      j++;
+    }
+
+
+    var task = '<div class="ganttTask" id="gt'+_t.id+'" title="'+_t.id+'" style="margin-left: ';
+    task += (Gantt.view.day.width*getTimeDiff(Gantt.time,_t.start))+'px; width: '+((Gantt.view.day.width*_t.day.length)-5)+'px">'+_t.subject+'</div>';
+    task += '<div class="ganttPoint" id="gp'+_t.id+'" title="'+_t.id+'" style="margin-left: '+((Gantt.view.day.width*getTimeDiff(Gantt.time,_t.end)))+'px;"></div>';
+    return task;
   },
   buildWorkload : function(_gindex) {
     var g = this.groups[_gindex];
+    g.workload = [];
     for(var i = 0; i< g.tasks.length; i++) {
       for(var n in g.tasks[i].day) {
         var wl = g.workload[n];
@@ -117,6 +164,7 @@ Gantt = {
         g.workload[n] = wl;
       }
     }
+    $('#gs'+_gindex+' .ganttDayItem').remove();
     for(var i = 0;i<30;i++) {
       var now = new Date(this.date.getTime() + (i*this.view.day.ms));
       var l = g.workload[now.getTime()];
@@ -139,54 +187,88 @@ Gantt = {
       }
       Gantt.buildWorkload(index);
     });
-    $('.ganttSlider').css('background-image', 'url('+chrome.extension.getURL("bg2.gif")+')');
-  }  
+    
+  },
+  init : function() {
+    //compile holidays
+    for(var i = 0; i < this.holiday.length;i++) {
+      this.holiday[new Date(this.holiday[i]).getTime()] = true;
+    }
+  }
 }
-
+Gantt.init();
 Gantt.setToday();
 
 
 
-function saveDate(_this) {
+function saveDate(_this,_type) {
   var id = $(_this).attr('title');
+  var org = jQuery.extend({}, Gantt.tasks[id]);
 
   var margin = parseInt($(_this).css('margin-left'));
   var width = parseInt($(_this).css('width'));
-  var start = Math.round(margin / dayWidth);
-  var days = Math.round(width / dayWidth);
-  var startDate = new Date(Gantt.date.getTime() + ((start) * Gantt.view.day.ms));
-  //var endDate = new Date(Gantt.date.getTime() + ((start + days - 1 ) *  Gantt.view.day.ms));
-  
+  var start = Math.round(margin / Gantt.view.day.width);
+  var days = Math.round(width / Gantt.view.day.width);
+  var date = new Date(Gantt.date.getTime() + ((start) * Gantt.view.day.ms));
+
+
+  var dateString = dayString(date);
   var effort = 0;
   for(var i = 0;i<days;i++) {
-    var now = new Date(startDate.getTime() + (i * Gantt.view.day.ms));
-    if(testDay(now)){
+    var now = new Date(date.getTime() + (i * Gantt.view.day.ms));
+    if(testDay(now.getTime())){
       effort += Gantt.view.day.effort;
-    } 
+    }
   }
-  console.log(effort);
-
-
-
-
-  var startDateString = dayString(startDate);
-  //var endDateString = dayString(endDate);
-
+  
   var url = '/issues/'+id+'.json';
   $.ajax({
     type: 'GET',
     url: url, 
     success: function(data) { 
-      data.issue.start_date = startDateString;
-      //data.issue.due_date = endDateString;
-      data.issue.estimated_hours = effort;
+      var t = Gantt.tasks[id];
+      switch(_type) {
+        case 'start':
+          t.start = new Date(dateString).getTime();
+          data.issue.start_date = dateString;
+          break;
+        case 'effort':
+          t.effort = effort;
+          data.issue.estimated_hours = effort;
+          break;
+        case 'end':
+          t.end = new Date(dateString).getTime();
+          data.issue.due_date = dateString;
+          break;
+      }
       $.ajax({
         type: 'PUT',
         url: url,
         data: data, 
-        success: function() { },
-        complete : function() { 
-          document.location = "/projects/safefqwefqwedfasd/issues?query_id=300";
+        success: function() { 
+          $('#gp'+id).remove();
+          $('#gt'+id).replaceWith(Gantt.htmlTask(t));
+            $('.group').each(function(index){
+              Gantt.buildWorkload(index);
+            });
+        },
+        error : function(_e){
+          if(_e.status == 200) {
+            $('#gp'+id).remove();
+            $('#gt'+id).replaceWith(Gantt.htmlTask(t));
+
+            $('.group').each(function(index){
+              Gantt.buildWorkload(index);
+            });
+          } else {
+            alert('fehler beim speichern. :(');
+            Gantt.tasks[id] = org;
+            $('#gp'+id).remove();
+            $('#gt'+id).replaceWith(Gantt.htmlTask(org));
+          }
+        },
+        complete : function() {
+          //document.location = "/projects/safefqwefqwedfasd/issues?query_id=300";
          }
       });
     }
