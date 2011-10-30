@@ -2,7 +2,6 @@
   display: block;
   background-color: #ccc;
   overflow: hidden;
-  background-image: url( chrome-extension://dgmbjcoiclpkkmdeefehinjhcobphmhj/bg2.gif );
   background-repeat: repeat;
   margin: 0;
   padding: 0;
@@ -41,3 +40,22 @@
 .ganttControls div {
   float: left;
 }
+
+.ganttLoad{
+  opacity: 0.5;
+  height: 16px;
+  width: 200%;
+  overflow: hidden;
+}
+.ganttDayItem {
+  float: left;
+  width: 35px;
+  border-right: 1px solid #000;
+  height: 12px;
+  padding: 2px;
+  font-size: 10px;
+}
+
+
+
+

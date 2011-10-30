@@ -1,12 +1,8 @@
 
-/* Datum */
-var now = new Date(); 
-var date = now.getTime();
 
 
 /* Darstellungsvariablen */
 var dayWidth = 40;
-var dayOffset = 1;
 var effortADay = 8;
 var aDay = 86400000;
 
@@ -17,12 +13,12 @@ var currentX = 0;
 var currentW = 0;
 var slide = true;
 
-var gantts = [];
 
 Gantt = {
-  date : new Date(),
+  date : null,
   time : null,
   day : null,
+  groups : [],
   view : {
     day : {
       width : 40,
@@ -37,7 +33,6 @@ Gantt = {
     currentW : 0,
     slide : true
   },
-  gantts : [],
   update : function() {
     this.date.setUTCHours(0); 
     this.date.setUTCMinutes(0); 
@@ -49,104 +44,104 @@ Gantt = {
     this.build();
   },
   setToday : function() {
-    this.date = new Date();
+    this.date = new Date(new Date().getTime() - (this.view.day.offset * this.view.day.ms)); 
     this.update();
   },
   addDays : function(_days){
     this.date = new Date(this.time + (_days * this.view.day.ms));
     this.update();
   },
+  buildGroup : function(_this,_index) {
+    this.groups[_index] = {
+      index : _index,
+      tasks : [],
+      workload : []
+    };
+
+    $(_this).find('td').append('<div class="ganttControls" id="gc'+_index+'"><span class="ganttLeftMonth">- 1 M</span> | <span class="ganttLeftWeek">- 1 W</span> | <span class="ganttToday">Heute</span> | <span class="ganttRightWeek">+ 1 W</span> | <span class="ganttRightMonth">+ 1 M</span></div>')
+    
+    $(_this).find('td').append('<div class="ganttSlider" id="gs'+_index+'"/>');
+    $('#gs'+_index).append('<div class="ganttDate"></div>');
+    $('#gs'+_index).append('<div class="ganttLoad"></div>');
+
+    for(var i = 0;i<10;i++) {
+      var item = new Date(Gantt.time + (((7*i) - Gantt.day ) * Gantt.view.day.ms));
+      var vdate = item.getDate()+'.'+(item.getMonth()+1)+'.';
+      $('#gs'+_index+' .ganttDate').append('<div class="ganttDateItem gdi'+i+'">'+vdate+'</div>');
+    }
+
+    var marginleft = -1 * (this.day) * this.view.day.width;
+    $('#gs'+_index).css('background-position',marginleft+'px 0');
+    $('#gs'+_index+' .ganttDate').find('.gdi0').css('margin-left',marginleft+'px');
+  },
+  buildTask : function(_node,_gindex) {
+    var g = {
+      start : getDate($(_node).find('.start_date').text()),
+      end   : getDate($(_node).find('.due_date').text()),
+      effort : $(_node).find('.estimated_hours').text(),
+      id : $(_node).find('.id a').text(),
+      subject : $(_node).find('.subject a').text(),
+      day : [],
+      days : function() { return Math.ceil(this.effort / Gantt.view.day.effort ); },
+      startday : function() { return new Date(this.start).getDay();}
+    };
+    var j = 0;
+    var d = 0;
+    while(d<g.days()) {
+      var now = (g.start + (j * Gantt.view.day.ms));
+      if(testDay(now)){
+        g.day[now] = 1;
+        d++;
+      } else {
+        g.day[now] = 0;
+      }
+      g.day.length++;
+      j++;
+    }
+    this.groups[_gindex].tasks.push(g);
+    this.showTask(_gindex,this.groups[_gindex].tasks.length-1);
+  },
+  showTask : function(_gindex,_tindex) {
+    var g = this.groups[_gindex].tasks[_tindex];
+    var diff = getTimeDiff(Gantt.time,g.start);
+    $('#gs'+_gindex).append('<div class="ganttTask" title="'+g.id+'" style="margin-left: '+(Gantt.view.day.width*diff)+'px; width: '+(Gantt.view.day.width*g.day.length)+'px">'+g.subject+'</div>'); 
+  },
+  buildWorkload : function(_gindex) {
+    var g = this.groups[_gindex];
+    for(var i = 0; i< g.tasks.length; i++) {
+      for(var n in g.tasks[i].day) {
+        var wl = g.workload[n];
+        if(wl===undefined) {wl = g.tasks[i].day[n]} else { wl += g.tasks[i].day[n]; }
+        g.workload[n] = wl;
+      }
+    }
+    for(var i = 0;i<30;i++) {
+      var now = new Date(this.date.getTime() + (i*this.view.day.ms));
+      var l = g.workload[now.getTime()];
+      l = (l == undefined) ? 0 : l;
+      l = (l * 100)+"%";
+      $('#gs'+_gindex+' .ganttLoad').append('<div class="ganttDayItem gdi'+i+'">'+l+'</div>');
+    }
+  },
   build : function() {
     $('.ganttControls').remove();
     $('.ganttSlider').remove();
-
     $('.group').each(function(index){
-
-
-      var gsindex = index;
-      $(this).find('td').append('<div class="ganttControls" id="gc'+index+'"><span class="ganttLeftMonth">- 1 M</span> | <span class="ganttLeftWeek">- 1 W</span> | <span class="ganttToday">Heute</span> | <span class="ganttRightWeek">+ 1 W</span> | <span class="ganttRightMonth">+ 1 M</span></div>')
-      $(this).find('td').append('<div class="ganttSlider" id="gs'+gsindex+'"/>');
-      $('#gs'+index).append('<div class="ganttDate"></div>');
-
-      for(var i = 0;i<10;i++) {
-        var item = new Date(Gantt.time + (((7*i) - Gantt.day ) * Gantt.view.day.ms));
-        var vdate = item.getDate()+'.'+(item.getMonth()+1)+'.';
-        $('#gs'+gsindex+' .ganttDate').append('<div class="ganttDateItem gdi'+i+'">'+vdate+'</div>');
-      }
-
-      var marginleft = -1 * (Gantt.day - Gantt.view.day.offset) * Gantt.view.day.width;
-      $('#gs'+gsindex).css('background-position',marginleft+'px 0');
-      $('#gs'+gsindex+' .ganttDate').find('.gdi0').css('margin-left',marginleft+'px');
-      
-    
-      $(this).find('.issue').each(function(index){
-
-        var g = {
-          start : getDate($(this).find('.start_date').text()),
-          end   : getDate($(this).find('.due_date').text()),
-          effort : $(this).find('.estimated_hours').text(),
-          day : [],
-          days : function() { return Math.ceil(this.effort / Gantt.view.day.effort ); },
-          startday : function() { return new Date(this.start).getDay();}
-        };
-
-
-        console.log(g);
-
-        var diff = getTimeDiff(Gantt.time,g.start) + Gantt.view.day.offset;
-        var duration = g.day.length;
-
-        $('#gs'+gsindex).append('<div class="ganttTask" title="'+$(this).find('.id a').text()+'" style="margin-left: '+(Gantt.view.day.width*diff)+'px; width: '+(Gantt.view.day.width*duration)+'px">'+$(this).find('.subject a').text()+'</div>');
-
-
-      });
-
-    /*
-    var group = this;
-    var i = 0;
-    gantts[index]= [];
-    var n = group.nextSibling;
-    while (n != undefined && !$(n).hasClass('group')) {
-      if(n.tagName=='TR') {
-
-        var g = {};
-
-        g.start = getDate($(n).find('.start_date').text());
-        g.end = getDate($(n).find('.due_date').text());
-        g.effort = $(n).find('.estimated_hours').text();
-        g.days = Math.ceil(g.effort / effortADay );
-        g.startday = new Date(g.start).getDay();
-
-        g.day = []
-        var j = 0;
-        var d = 0;
-        while(d<g.days) {
-          var now = (g.start + (j * aDay));
-          if(testDay(now)){
-            g.day[now] = true;
-            d++;
-          } else {
-            g.day[now] = false;
-          }
-          g.day.length++;
-          j++;
+      Gantt.buildGroup(this,index);
+      var n = this.nextSibling;
+      while (n != undefined && !$(n).hasClass('group')) {
+        if(n.tagName=='TR') {
+          Gantt.buildTask(n,index);
         }
-        gantts[index][i] = g;
-
-        var diff = getTimeDiff(date,g.start) + dayOffset;
-        var duration = g.day.length;
-        $('#gs'+index).append('<div class="ganttTask" title="'+$(n).find('.id a').text()+'" style="margin-left: '+(dayWidth*diff)+'px; width: '+(dayWidth*duration)+'px">'+$(n).find('.subject a').text()+'</div>');
-        i++;
+        n = n.nextSibling;
       }
-      n = n.nextSibling;
-    }*/
-  });
-
-
+      Gantt.buildWorkload(index);
+    });
+    $('.ganttSlider').css('background-image', 'url('+chrome.extension.getURL("bg2.gif")+')');
   }  
 }
 
-Gantt.update();
+Gantt.setToday();
 
 
 
@@ -155,14 +150,25 @@ function saveDate(_this) {
 
   var margin = parseInt($(_this).css('margin-left'));
   var width = parseInt($(_this).css('width'));
-  var start = Math.round(margin / dayWidth) - dayOffset;
-  var end = Math.round(width / dayWidth) - 1;
+  var start = Math.round(margin / dayWidth);
+  var days = Math.round(width / dayWidth);
+  var startDate = new Date(Gantt.date.getTime() + ((start) * Gantt.view.day.ms));
+  //var endDate = new Date(Gantt.date.getTime() + ((start + days - 1 ) *  Gantt.view.day.ms));
   
-  var startDate = new Date(date + ((start) * aDay));
-  var endDate = new Date(date + ((start + end ) *  aDay));
-  
+  var effort = 0;
+  for(var i = 0;i<days;i++) {
+    var now = new Date(startDate.getTime() + (i * Gantt.view.day.ms));
+    if(testDay(now)){
+      effort += Gantt.view.day.effort;
+    } 
+  }
+  console.log(effort);
+
+
+
+
   var startDateString = dayString(startDate);
-  var endDateString = dayString(endDate);
+  //var endDateString = dayString(endDate);
 
   var url = '/issues/'+id+'.json';
   $.ajax({
@@ -170,13 +176,16 @@ function saveDate(_this) {
     url: url, 
     success: function(data) { 
       data.issue.start_date = startDateString;
-      data.issue.due_date = endDateString;
+      //data.issue.due_date = endDateString;
+      data.issue.estimated_hours = effort;
       $.ajax({
         type: 'PUT',
         url: url,
         data: data, 
         success: function() { },
-        complete : function() { document.location = "/projects/safefqwefqwedfasd/issues?query_id=300"; }
+        complete : function() { 
+          document.location = "/projects/safefqwefqwedfasd/issues?query_id=300";
+         }
       });
     }
 

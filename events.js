@@ -1,6 +1,6 @@
 $('.ganttLeftMonth' ).live('click',function(_evt){ Gantt.addDays(-30); });
 $('.ganttRightMonth').live('click',function(_evt){ Gantt.addDays(30);  });
-$('.ganttToday').live('click',function(_evt){      Gantt.todays();     });
+$('.ganttToday').live('click',function(_evt){      Gantt.setToday();   });
 $('.ganttLeftWeek').live('click',function(_evt){   Gantt.addDays(-7);  });
 $('.ganttRightWeek').live('click',function(_evt){  Gantt.addDays(7);   });
 
