@@ -1,0 +1,16 @@
+{
+  "name": "Redmine DynGantt",
+  "version": "1.0",
+  "id" : "dgmbjcoiclpkkmdeefehinjhcobphmhj",
+  "description": "Gantt View for Project-List",
+  "content_scripts": [
+    {
+      "matches": ["https://*/projects/*/issues*"],
+      "css": ["style.css"],
+      "js": ["jquery.js","helper.js", "go.js", "events.js"]
+    }
+  ],
+  "icons": { "16": "16.jpg",
+           "48": "48.jpg",
+          "128": "128.jpg" }
+}
